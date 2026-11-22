@@ -1,0 +1,38 @@
+[package]
+name = "cloudrdpapp"
+version = "0.1.0"
+edition = "2024"
+description = "Unofficial native Linux client for Microsoft Azure Virtual Desktop and Windows 365, powered by FreeRDP"
+license = "MIT"
+repository = "https://github.com/mannsion/CloudRDPApp"
+readme = "README.md"
+rust-version = "1.95"
+keywords = ["rdp", "freerdp", "avd", "vdi", "gtk4"]
+categories = ["gui", "network-programming"]
+
+[dependencies]
+adw = { version = "0.9", package = "libadwaita", features = ["v1_7"] }
+base64 = "0.23.1"
+getrandom = "0.4.3"
+gtk = { version = "0.11", package = "gtk4", features = ["v4_18"] }
+libc = "0.2.191"
+oo7 = "0.7"
+openssl = "0.10"
+openssl-probe = "0.2.2"
+rcgen = "0.14.10"
+relm4 = { version = "0.11", features = ["libadwaita", "gnome_48"] }
+reqwest = { version = "0.13", default-features = false, features = ["rustls-no-provider", "http2", "form", "json", "gzip", "system-proxy"] }
+roxmltree = "0.21.2"
+rustls = { version = "0.23.46", default-features = false, features = ["ring", "std", "tls12", "logging"] }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+sha2 = "0.11.1"
+thiserror = "2.0.21"
+tokio = { version = "1.54.1", features = ["rt-multi-thread", "macros", "net", "io-util", "process", "sync", "time", "fs"] }
+tokio-openssl = "0.6"
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
+url = "2.5.9"
+
+[dev-dependencies]
+tokio-rustls = { version = "0.26.6", default-features = false, features = ["ring", "tls12", "logging"] }

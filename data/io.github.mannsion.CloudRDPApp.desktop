@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=CloudRDPApp
+GenericName=Cloud Remote Desktop Client
+Comment=Unofficial Linux client for Microsoft Azure Virtual Desktop and Windows 365
+Exec=cloudrdpapp
+Icon=io.github.mannsion.CloudRDPApp
+Terminal=false
+Categories=Network;RemoteAccess;GTK;
+Keywords=AVD;Azure Virtual Desktop;Windows 365;Windows App;Cloud PC;VDI;RDP;FreeRDP;remote;
+StartupNotify=true
+StartupWMClass=io.github.mannsion.CloudRDPApp
