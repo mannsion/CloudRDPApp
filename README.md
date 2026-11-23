@@ -74,4 +74,4 @@ Session logs are kept in `~/.local/state/cloudrdpapp/logs/` and settings in `~/.
 
 Licensed under the [MIT License](LICENSE).
 
-Microsoft, Windows, Windows 365, Azure, Azure Virtual Desktop, and Microsoft Entra are trademarks of Microsoft Corporation. FreeRDP is a trademark of the FreeRDP project.
+All product names and trademarks belong to their respective owners.
