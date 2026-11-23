@@ -10,15 +10,19 @@
 //! | `dialogs` | password prompt, About, file chooser |
 //! | `service` | real backend or demo behind one interface |
 //! | `demo` | offline demo mode |
+//! | `layer_shell` | safe wrapper for `gtk4-layer-shell` Wayland overlays |
+//! | `session_bar` | floating top-center connection bar for active sessions |
 //! | `logic` | GTK-free view decisions, unit tested |
 
 mod app;
 mod card;
 mod demo;
 mod dialogs;
+mod layer_shell;
 mod logic;
 mod logview;
 mod service;
+mod session_bar;
 mod settings;
 mod view;
 

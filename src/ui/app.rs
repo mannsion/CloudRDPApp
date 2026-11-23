@@ -17,13 +17,15 @@ use super::dialogs;
 use super::logic::{self, CardState, ExitInfo, error_text, sign_in_error_text};
 use super::logview::{LogStore, LogViewer, LogViewerMsg};
 use super::service::{ManualLogin, Service, SessionHandle, rdp_file_title};
+use super::session_bar::SessionBar;
 use super::settings::{self, SettingsContext, SettingsTarget};
 use super::view::{self, AppWidgets};
 use crate::auth::Account;
 use crate::backend::{Backend, BackendError, Clients, OpenUrl, StatusSink};
-use crate::config::{Config, ConnectionSettings};
-use crate::feed::{Feed, Resource};
+use crate::config::{ClientKind, Config, ConnectionBar, ConnectionSettings};
+use crate::feed::{Feed, Resource, ResourceKind};
 use crate::paths;
+use crate::rdp::RdpFile;
 use crate::rdp::freerdp;
 use crate::rdp::session::{EventSink, SessionEvent};
 
@@ -121,6 +123,7 @@ pub struct App {
     titles: HashMap<String, String>,
     logs: LogStore,
     log_viewer: Controller<LogViewer>,
+    session_bar: SessionBar,
     next_generation: u64,
 }
 
@@ -128,6 +131,7 @@ pub struct App {
 pub enum AppMsg {
     OpenUrl(String),
     Status(String),
+    RaiseWindow,
     SignIn,
     CancelSignIn,
     UseManualSignIn,
@@ -440,6 +444,7 @@ impl App {
     }
 
     fn disconnect(&mut self, key: &str) {
+        self.session_bar.remove(key);
         if let Some(session) = self.sessions.get_mut(key) {
             session.stopped = true;
             if let Some(handle) = session.handle.as_mut() {
@@ -459,6 +464,7 @@ impl App {
     }
 
     fn fail(&mut self, key: &str, reason: String, sender: &ComponentSender<Self>) {
+        self.session_bar.remove(key);
         let session = self.sessions.remove(key);
         let is_file = matches!(session.as_ref().map(|s| &s.target), Some(Target::File { .. }));
         self.failures.insert(key.to_owned(), reason.clone());
@@ -507,9 +513,11 @@ impl App {
                         self.toast(&text);
                     }
                 }
+                self.session_bar.set_connected(&key);
                 self.refresh_card(&key);
             }
             SessionEvent::Exited { code } if current => {
+                self.session_bar.remove(&key);
                 self.logs.push(&key, exit_line(code));
                 self.log_viewer.emit(LogViewerMsg::Append { key: key.clone(), line: exit_line(code) });
                 let session = self.sessions.get(&key).unwrap();
@@ -641,6 +649,7 @@ impl Component for App {
             titles: HashMap::new(),
             logs: LogStore::default(),
             log_viewer,
+            session_bar: SessionBar::new(sender.clone()),
             next_generation: 0,
         };
         widgets.sync(&model);
@@ -673,6 +682,7 @@ impl Component for App {
                 self.last_url = Some(url);
             }
             AppMsg::Status(text) => self.toast(&text),
+            AppMsg::RaiseWindow => self.window.present(),
             AppMsg::SignIn => self.start_sign_in(&sender),
             AppMsg::CancelSignIn => {
                 self.abort_sign_in();
@@ -790,6 +800,7 @@ impl Component for App {
             AppMsg::ShowAbout => dialogs::about(&self.window),
             AppMsg::SignOut => {
                 let Some(service) = self.service.clone() else { return };
+                self.session_bar.clear();
                 self.stop_all_sessions();
                 self.sessions.clear();
                 self.failures.clear();
@@ -839,6 +850,7 @@ impl Component for App {
             }
             AppMsg::Closing => {
                 self.abort_sign_in();
+                self.session_bar.clear();
                 self.stop_all_sessions();
             }
         }
@@ -921,11 +933,31 @@ impl Component for App {
                         let file = handle.log_file();
                         self.logs.set_file(&key, file.clone());
                         self.log_viewer.emit(LogViewerMsg::SetFile { key: key.clone(), file });
+                        let client = handle.client();
                         let session = self.sessions.get_mut(&key).unwrap();
                         if session.stopped {
                             handle.stop();
                         }
                         session.handle = Some(handle);
+                        if !session.stopped && client == ClientKind::Sdl {
+                            let (is_file, is_remote_app, settings) = match &session.target {
+                                Target::Resource(r) => {
+                                    (false, r.kind == ResourceKind::RemoteApp, self.config.settings_for(&r.key()))
+                                }
+                                Target::File { text, .. } => {
+                                    (true, RdpFile::parse(text).is_remote_app(), &self.config.defaults)
+                                }
+                            };
+                            if !is_remote_app && settings.display.connection_bar != ConnectionBar::Off {
+                                self.session_bar.add(
+                                    key,
+                                    session.title.clone(),
+                                    is_file,
+                                    settings.display.connection_bar,
+                                    settings.advanced.hotkeys.hint(),
+                                );
+                            }
+                        }
                     }
                     Err(_) if !current => {}
                     Err(ConnectFailure::PasswordRequired) => {
@@ -983,6 +1015,7 @@ impl Component for App {
     }
 
     fn shutdown(&mut self, _widgets: &mut Self::Widgets, _output: relm4::Sender<Self::Output>) {
+        self.session_bar.clear();
         self.stop_all_sessions();
     }
 }

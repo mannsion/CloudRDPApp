@@ -41,6 +41,11 @@ const DISPLAY_MODES: &[(DisplayMode, &str)] = &[
     (DisplayMode::FixedWindow, "Fixed-size window"),
 ];
 const SCALE_MODES: &[(ScaleMode, &str)] = &[(ScaleMode::Auto, "Automatic"), (ScaleMode::Custom, "Custom")];
+const CONNECTION_BAR: &[(ConnectionBar, &str)] = &[
+    (ConnectionBar::AutoHide, "Auto-hide (top edge)"),
+    (ConnectionBar::Pinned, "Always visible"),
+    (ConnectionBar::Off, "Off"),
+];
 const CODECS: &[(GraphicsCodec, &str)] = &[
     (GraphicsCodec::Avc444, "AVC 4:4:4"),
     (GraphicsCodec::Avc420, "AVC 4:2:0"),
@@ -84,6 +89,7 @@ const CERTS: &[(CertPolicy, &str)] = &[
     (CertPolicy::Ignore, "Ignore (unsafe)"),
 ];
 const HOTKEYS: &[(HotkeyModifier, &str)] = &[
+    (HotkeyModifier::RightCtrl, "Right Ctrl"),
     (HotkeyModifier::CtrlAlt, "Ctrl + Alt"),
     (HotkeyModifier::RightShift, "Right Shift"),
     (HotkeyModifier::RightCtrlRightShift, "Right Ctrl + Shift"),
@@ -356,6 +362,14 @@ fn display_page(rows: &Rows, context: &SettingsContext) -> adw::PreferencesPage 
         |s| s.display.smart_sizing,
         |s, v| s.display.smart_sizing = v,
     );
+    rows.combo(
+        &display,
+        "Connection bar",
+        "Floating menu at the top of the remote desktop to switch back, view logs, or disconnect. Auto-hide reveals when hovering the top-center edge (Wayland overlay requires gtk4-layer-shell on SDL; built-in on X11).",
+        CONNECTION_BAR,
+        |s| s.display.connection_bar,
+        |s, v| s.display.connection_bar = v,
+    );
 
     // Only show the rows that mean something in the chosen mode: full screen
     // always uses the monitor's own resolution, so it has no size to set.
@@ -572,7 +586,7 @@ fn advanced_page(rows: &Rows, context: &SettingsContext) -> adw::PreferencesPage
     rows.combo(
         &keyboard,
         "Shortcut modifier",
-        "Modifier for the SDL client's shortcuts (+ Enter full screen, + D disconnect), written to ~/.config/freerdp/sdl-freerdp.json. With FreeRDP's default, Right Shift, typing a capital D with Right Shift disconnects. Unmanaged leaves that file alone.",
+        "Modifier for SDL client shortcuts (+ Enter full screen — press twice when starting full screen on FreeRDP 3.33, + M minimize, + G toggle keyboard grab, + D disconnect). Right Ctrl leaves Ctrl + Alt free for Windows and avoids desktop shortcut conflicts. Written to ~/.config/freerdp/sdl-freerdp.json.",
         HOTKEYS,
         |s| s.advanced.hotkeys,
         |s, v| s.advanced.hotkeys = v,
@@ -580,7 +594,7 @@ fn advanced_page(rows: &Rows, context: &SettingsContext) -> adw::PreferencesPage
     rows.switch(
         &keyboard,
         "Send all keys to the remote",
-        "Includes the Super key and Alt+Tab while the session has focus.",
+        "Includes Super and Alt+Tab while focused. On KDE/GNOME Wayland, allow shortcut inhibition if prompted; if your desktop still intercepts Ctrl + Alt, try the X11 video driver or X11 client.",
         |s| s.advanced.grab_keyboard,
         |s, v| s.advanced.grab_keyboard = v,
     );
@@ -701,6 +715,7 @@ mod tests {
         check(
             HOTKEYS,
             &[
+                HotkeyModifier::RightCtrl,
                 HotkeyModifier::CtrlAlt,
                 HotkeyModifier::RightShift,
                 HotkeyModifier::RightCtrlRightShift,
@@ -708,6 +723,7 @@ mod tests {
                 HotkeyModifier::Unmanaged,
             ],
         );
+        check(CONNECTION_BAR, &[ConnectionBar::AutoHide, ConnectionBar::Pinned, ConnectionBar::Off]);
         check(LOG_LEVELS, &[LogLevel::Warn, LogLevel::Info, LogLevel::Debug, LogLevel::Trace]);
         check(VIDEO_BACKENDS, &[VideoBackend::Auto, VideoBackend::Wayland, VideoBackend::X11]);
         check(CLIENTS, &[ClientKind::Sdl, ClientKind::X11]);

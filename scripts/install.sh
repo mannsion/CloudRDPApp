@@ -88,17 +88,18 @@ version_ge() {
 print_distro_hints() {
     cat >&2 <<'EOF'
 
-Install build dependencies for your distribution:
+Install build dependencies for your distribution (gtk4-layer-shell is optional,
+for the auto-hiding top connection bar over fullscreen Wayland sessions):
   Arch Linux:
-    sudo pacman -S --needed rust gtk4 libadwaita openssl pkgconf freerdp
+    sudo pacman -S --needed rust gtk4 libadwaita openssl pkgconf freerdp gtk4-layer-shell
   Fedora:
-    sudo dnf install rust cargo gtk4-devel libadwaita-devel openssl-devel pkgconf-pkg-config freerdp
+    sudo dnf install rust cargo gtk4-devel libadwaita-devel openssl-devel pkgconf-pkg-config freerdp gtk4-layer-shell-devel
   Ubuntu / Debian (25.04+ / Sid, or newer):
-    sudo apt install cargo rustc libgtk-4-dev libadwaita-1-dev libssl-dev pkg-config
+    sudo apt install cargo rustc libgtk-4-dev libadwaita-1-dev libssl-dev pkg-config libgtk4-layer-shell-dev
     (Note: Ubuntu/Debian may ship an older Rust or FreeRDP; use rustup for Rust 1.95+
      and build FreeRDP 3.32+ from source if your distro repository is older.)
   openSUSE Tumbleweed:
-    sudo zypper install rust cargo gtk4-devel libadwaita-devel libopenssl-devel pkgconf-pkg-config freerdp
+    sudo zypper install rust cargo gtk4-devel libadwaita-devel libopenssl-devel pkgconf-pkg-config freerdp gtk4-layer-shell-devel
 EOF
 }
 
@@ -136,6 +137,11 @@ check_prerequisites() {
 
         if ! pkg-config --exists openssl; then
             errors+=("openssl development files not found (libssl / openssl-devel required)")
+        fi
+
+        if ! pkg-config --exists gtk4-layer-shell-0; then
+            echo "Info: optional gtk4-layer-shell-0 not found via pkg-config." >&2
+            echo "  Building without the Wayland top connection bar overlay (install gtk4-layer-shell-devel to enable it)." >&2
         fi
     fi
 

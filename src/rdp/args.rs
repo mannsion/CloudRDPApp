@@ -8,8 +8,8 @@ use std::path::{Path, PathBuf};
 
 use super::file::RdpFile;
 use crate::config::{
-    AudioPlayback, CertPolicy, ClientKind, ConnectionSettings, DisplayMode, DriveSharing, GraphicsCodec,
-    HostAuth, ScaleMode, VideoBackend,
+    AudioPlayback, CertPolicy, ClientKind, ConnectionBar, ConnectionSettings, DisplayMode,
+    DriveSharing, GraphicsCodec, HostAuth, ScaleMode, VideoBackend,
 };
 use crate::util;
 
@@ -127,6 +127,7 @@ pub fn build(input: LaunchInput<'_>) -> Result<LaunchPlan, String> {
     if !clean_title.trim().is_empty() {
         args.push(format!("/t:{}", clean_title.trim()));
     }
+    args.push(format!("/wm-class:{}", crate::consts::APP_ID));
 
     // --- display -----------------------------------------------------------
     // The feed's file may carry display properties that win over the command
@@ -181,6 +182,25 @@ pub fn build(input: LaunchInput<'_>) -> Result<LaunchPlan, String> {
         let percent = percent.clamp(100, 500);
         args.push(format!("/scale-desktop:{percent}"));
         args.push(format!("/scale-device:{}", nearest_device_scale(percent)));
+    }
+
+    // FreeRDP 3.33 SDL3 does not implement /floatbar; CloudRDPApp shows its
+    // own optional GTK4 Wayland overlay bar for SDL sessions instead.
+    if client == ClientKind::X11 && !remote_app {
+        let floatbar = match display.connection_bar {
+            ConnectionBar::AutoHide => {
+                if display.mode == DisplayMode::Fullscreen {
+                    Some("/floatbar:sticky:off,default:hidden,show:fullscreen,position:center")
+                } else {
+                    Some("/floatbar:sticky:off,default:hidden,show:always,position:center")
+                }
+            }
+            ConnectionBar::Pinned => Some("/floatbar:sticky:on,default:visible,show:always,position:center"),
+            ConnectionBar::Off => None,
+        };
+        if let Some(arg) = floatbar {
+            args.push(arg.into());
+        }
     }
 
     // --- graphics ----------------------------------------------------------
@@ -267,6 +287,7 @@ pub fn build(input: LaunchInput<'_>) -> Result<LaunchPlan, String> {
     // --- behaviour ---------------------------------------------------------
     let advanced = &settings.advanced;
     args.push(if advanced.grab_keyboard { "+grab-keyboard" } else { "-grab-keyboard" }.into());
+    rdp.set_int("keyboardhook", i64::from(advanced.grab_keyboard));
     match (advanced.certificates, client) {
         // The SDL client asks in a dialog. The X11 client would ask on a
         // terminal that does not exist here, so it pins on first use instead.
@@ -372,6 +393,7 @@ mod tests {
             "/sec:aad",
             "/u:alex@contoso.com",
             "/t:Dev Desktop",
+            "/wm-class:io.github.mannsion.CloudRDPApp",
             "/f",
             "/network:auto",
             "/gfx:AVC444:on,AVC420:on,RFX:on",
@@ -387,13 +409,16 @@ mod tests {
         ] {
             assert!(has(&plan, expected), "missing {expected} in {:?}", plan.args);
         }
-        // No password, no certificate override, no manual scale with the SDL client.
-        assert!(!plan.args.iter().any(|a| a.starts_with("/p:") || a.starts_with("/cert") || a.starts_with("/scale")));
+        // No password, no certificate override, no manual scale, no X11 /floatbar with the SDL client.
+        assert!(!plan.args.iter().any(|a| {
+            a.starts_with("/p:") || a.starts_with("/cert") || a.starts_with("/scale") || a.starts_with("/floatbar")
+        }));
         assert!(!has(&plan, "/multimon"));
         // The feed asked for multimon and smart sizing; the file is corrected.
         assert_eq!(plan.rdp.get_int("use multimon"), Some(0));
         assert_eq!(plan.rdp.get_int("smart sizing"), Some(0));
         assert_eq!(plan.rdp.get_int("screen mode id"), Some(2));
+        assert_eq!(plan.rdp.get_int("keyboardhook"), Some(1));
         // Routing properties are untouched.
         assert_eq!(plan.rdp.get("loadbalanceinfo"), Some("mth://localhost/11111111-2222/33333333-4444"));
         assert!(plan.env.is_empty());
@@ -431,6 +456,42 @@ mod tests {
         let plan = build(inp).unwrap();
         assert!(has(&plan, "/scale-desktop:145") && has(&plan, "/scale-device:140"));
         assert!(has(&plan, "/cert:tofu"));
+        assert!(has(&plan, "/floatbar:sticky:off,default:hidden,show:fullscreen,position:center"));
+    }
+
+    #[test]
+    fn floatbar_is_x11_desktop_only_and_follows_connection_bar_setting() {
+        let mut settings = ConnectionSettings::default();
+        settings.display.mode = DisplayMode::DynamicWindow;
+        settings.display.connection_bar = ConnectionBar::AutoHide;
+        let mut inp = input(&settings, SAMPLE_AVD_RDP);
+        inp.client = ClientKind::X11;
+        let plan = build(inp).unwrap();
+        assert!(has(&plan, "/floatbar:sticky:off,default:hidden,show:always,position:center"));
+
+        settings.display.connection_bar = ConnectionBar::Pinned;
+        let mut inp = input(&settings, SAMPLE_AVD_RDP);
+        inp.client = ClientKind::X11;
+        let plan = build(inp).unwrap();
+        assert!(has(&plan, "/floatbar:sticky:on,default:visible,show:always,position:center"));
+
+        // SDL never gets /floatbar regardless of mode.
+        let plan = build(input(&settings, SAMPLE_AVD_RDP)).unwrap();
+        assert!(!plan.args.iter().any(|a| a.starts_with("/floatbar")));
+
+        // RemoteApp on X11 never gets /floatbar.
+        let rdp = format!("{SAMPLE_AVD_RDP}remoteapplicationmode:i:1\r\nremoteapplicationprogram:s:||excel\r\n");
+        let mut inp = input(&settings, &rdp);
+        inp.client = ClientKind::X11;
+        let plan = build(inp).unwrap();
+        assert!(!plan.args.iter().any(|a| a.starts_with("/floatbar")));
+
+        // ConnectionBar::Off disables /floatbar on X11.
+        settings.display.connection_bar = ConnectionBar::Off;
+        let mut inp = input(&settings, SAMPLE_AVD_RDP);
+        inp.client = ClientKind::X11;
+        let plan = build(inp).unwrap();
+        assert!(!plan.args.iter().any(|a| a.starts_with("/floatbar")));
     }
 
     #[test]
@@ -515,6 +576,7 @@ mod tests {
         }
         assert!(!plan.args.iter().any(|a| a.starts_with("/microphone") || a == "+auto-reconnect"));
         assert_eq!(plan.rdp.get("drivestoredirect"), Some("*"));
+        assert_eq!(plan.rdp.get_int("keyboardhook"), Some(0));
         assert_eq!(plan.env, vec![("SDL_VIDEODRIVER".to_owned(), "x11".to_owned())]);
 
         settings.audio.playback = AudioPlayback::Off;

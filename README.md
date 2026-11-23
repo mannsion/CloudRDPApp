@@ -12,6 +12,7 @@ Built with Rust, GTK 4 / libadwaita, and powered by [FreeRDP](https://www.freerd
 - **Browser SSO sign-in** — Sign in once with Microsoft Entra ID; credentials are stored in your desktop keyring (GNOME Keyring / KWallet).
 - **Silent connections** — Connects to your desktops and RemoteApps without popping up a browser login window every time.
 - **Per-desktop settings** — Tune display mode, scaling, AVC 4:4:4 graphics, audio, microphone, clipboard, and folder sharing globally or per desktop.
+- **In-session connection bar** — Optional auto-hiding top overlay bar in fullscreen Wayland sessions (or native `/floatbar` on X11) to switch back, view logs, or disconnect.
 - **Standalone `.rdp` files** — Open `.rdp` files directly from the app menu.
 
 ## Requirements
@@ -20,29 +21,30 @@ Built with Rust, GTK 4 / libadwaita, and powered by [FreeRDP](https://www.freerd
 - **GTK 4.18+** and **libadwaita 1.7+**
 - **OpenSSL** (`libssl`)
 - **Rust 1.95+** and `pkg-config` (to build from source)
+- **gtk4-layer-shell** — optional/recommended; enables the auto-hiding top connection bar over fullscreen Wayland sessions
 - A Secret Service keyring (GNOME Keyring or KWallet) — optional
 
 ### Install Dependencies
 
 **Arch Linux**
 ```sh
-sudo pacman -S --needed rust gtk4 libadwaita openssl pkgconf freerdp
+sudo pacman -S --needed rust gtk4 libadwaita openssl pkgconf freerdp gtk4-layer-shell
 ```
 
 **Fedora**
 ```sh
-sudo dnf install rust cargo gtk4-devel libadwaita-devel openssl-devel pkgconf-pkg-config freerdp
+sudo dnf install rust cargo gtk4-devel libadwaita-devel openssl-devel pkgconf-pkg-config freerdp gtk4-layer-shell-devel
 ```
 
 **Ubuntu / Debian**
 ```sh
-sudo apt install cargo rustc libgtk-4-dev libadwaita-1-dev libssl-dev pkg-config
+sudo apt install cargo rustc libgtk-4-dev libadwaita-1-dev libssl-dev pkg-config libgtk4-layer-shell-dev
 ```
 *(Use [rustup](https://rustup.rs/) if your distro ships Rust < 1.95, and install or [build FreeRDP 3.32+](https://github.com/FreeRDP/FreeRDP) if your distro package is older.)*
 
 **openSUSE Tumbleweed**
 ```sh
-sudo zypper install rust cargo gtk4-devel libadwaita-devel libopenssl-devel pkgconf-pkg-config freerdp
+sudo zypper install rust cargo gtk4-devel libadwaita-devel libopenssl-devel pkgconf-pkg-config freerdp gtk4-layer-shell-devel
 ```
 
 ## Install

@@ -105,9 +105,8 @@ FreeRDP source reference:
   X11 drivers. `/scale-desktop:N` overrides scale only when explicit override
   mode is enabled (single monitor). Multi-monitor sessions at fractional scales
   are known to fail in FreeRDP (overlap/gap checks).
-- **SDL hotkeys** default to Right Shift + key (D disconnects!). The modifier is
-  only configurable in `~/.config/freerdp/sdl-freerdp.json` (`SDL_KeyModMask`,
-  all listed modifiers must be held, `KMOD_NONE` disables).
+- **SDL hotkeys & keyboard grab** default to Right Ctrl (`HotkeyModifier::RightCtrl` → `KMOD_RCTRL`), leaving Ctrl + Alt free for Windows; FreeRDP's own default is Right Shift (D disconnects!). The modifier is only configurable in `~/.config/freerdp/sdl-freerdp.json` (`SDL_KeyModMask`, all listed modifiers must be held, `KMOD_NONE` disables). `rdp::args` also passes `/wm-class:io.github.mannsion.CloudRDPApp` for compositor icon grouping and Wayland shortcut-inhibition permissions, and syncs the `.rdp` `keyboardhook` property with `advanced.grab_keyboard`.
+- **In-session connection bar.** FreeRDP 3.33 SDL3 does not implement `/floatbar`. When `gtk4-layer-shell-0` is found at build time (`build.rs` sets `cfg(has_layer_shell)`), `ui::layer_shell` + `ui::session_bar` show an optional auto-hiding or pinned GTK4 Wayland overlay bar at the top edge for SDL desktop sessions; for X11 desktop sessions (`ClientKind::X11`), `rdp::args` passes FreeRDP's native `/floatbar` instead.
 - **Logging.** Console WLog output is block-buffered on pipes; with
   `WLOG_APPENDER=file` + `WLOG_FILEAPPENDER_OUTPUT_FILE_PATH/NAME` every message
   is flushed. "Local framebuffer format" marks an established session. Exit
@@ -162,6 +161,7 @@ FreeRDP source reference:
 | `ui::view` | main window widget tree (header, banner, sign-in page, grid/state pages) and `AppWidgets::sync` |
 | `ui::card` | one resource card, a factory component in a `gtk::FlowBox` per workspace |
 | `ui::settings` | `adw::PreferencesDialog` for defaults and per-resource overrides, built from row helpers |
+| `ui::layer_shell`, `ui::session_bar` | optional `gtk4-layer-shell` FFI wrapper and Wayland top-edge connection bar for SDL sessions |
 | `ui::logview` | `LogStore` (last 4000 lines per resource) and the log window |
 | `ui::dialogs` | password prompt (`adw::AlertDialog`), About, `.rdp` file chooser |
 | `ui::service` | `Service`: the real `Backend` or the demo behind one interface; `SessionHandle` |

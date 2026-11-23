@@ -64,9 +64,13 @@ mod tests {
     #[test]
     fn creates_the_file_when_missing() {
         let path = temp_file();
+        assert_eq!(apply(HotkeyModifier::RightCtrl, &path), Ok(true));
+        assert_eq!(read(&path)[KEY], serde_json::json!(["KMOD_RCTRL"]));
+        // Already as wanted: nothing is rewritten.
+        assert_eq!(apply(HotkeyModifier::RightCtrl, &path), Ok(false));
+
         assert_eq!(apply(HotkeyModifier::CtrlAlt, &path), Ok(true));
         assert_eq!(read(&path)[KEY], serde_json::json!(["KMOD_LCTRL", "KMOD_LALT"]));
-        // Already as wanted: nothing is rewritten.
         assert_eq!(apply(HotkeyModifier::CtrlAlt, &path), Ok(false));
         std::fs::remove_dir_all(path.parent().unwrap().parent().unwrap()).unwrap();
     }

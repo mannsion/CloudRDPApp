@@ -6,7 +6,7 @@ use std::sync::Arc;
 use crate::auth::store::KIND_PASSWORD;
 use crate::auth::{Account, PendingLogin};
 use crate::backend::{Backend, BackendError, Clients, Session};
-use crate::config::ConnectionSettings;
+use crate::config::{ClientKind, ConnectionSettings};
 use crate::feed::{Feed, Resource};
 use crate::rdp::session::EventSink;
 
@@ -53,6 +53,13 @@ impl SessionHandle {
         match self {
             SessionHandle::Real(session) => session.log_file().to_path_buf(),
             SessionHandle::Demo(session) => session.log_file.clone(),
+        }
+    }
+
+    pub fn client(&self) -> ClientKind {
+        match self {
+            SessionHandle::Real(session) => session.client,
+            SessionHandle::Demo(_) => ClientKind::Sdl,
         }
     }
 }

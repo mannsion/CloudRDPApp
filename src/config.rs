@@ -32,6 +32,19 @@ pub enum ScaleMode {
     Custom,
 }
 
+/// Floating connection bar shown at the top of an active RDP session.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "kebab-case")]
+pub enum ConnectionBar {
+    /// Hidden handle at the top-center edge; hover to reveal, pin to keep open.
+    #[default]
+    AutoHide,
+    /// Always visible (pinned) at the top-center edge while connected.
+    Pinned,
+    /// Disabled.
+    Off,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct DisplaySettings {
@@ -47,6 +60,8 @@ pub struct DisplaySettings {
     /// Stretch the remote image to the window instead of showing scroll bars
     /// (fixed-size windows only).
     pub smart_sizing: bool,
+    /// Floating connection bar at the top of an active RDP session.
+    pub connection_bar: ConnectionBar,
 }
 
 impl Default for DisplaySettings {
@@ -59,6 +74,7 @@ impl Default for DisplaySettings {
             scale: ScaleMode::Auto,
             scale_percent: 100,
             smart_sizing: false,
+            connection_bar: ConnectionBar::AutoHide,
         }
     }
 }
@@ -310,8 +326,11 @@ pub enum CertPolicy {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "kebab-case")]
 pub enum HotkeyModifier {
-    /// Ctrl + Alt, the classic RDP convention. Cannot collide with typing.
+    /// Right Ctrl. Leaves Ctrl + Alt free for Windows and avoids desktop
+    /// shortcut conflicts.
     #[default]
+    RightCtrl,
+    /// Ctrl + Alt, the classic RDP convention. Cannot collide with typing.
     CtrlAlt,
     /// FreeRDP's default. Typing a capital D with Right Shift disconnects.
     RightShift,
@@ -325,11 +344,23 @@ impl HotkeyModifier {
     /// The `SDL_KeyModMask` value, or `None` to leave the file alone.
     pub fn sdl_mask(self) -> Option<&'static [&'static str]> {
         match self {
+            HotkeyModifier::RightCtrl => Some(&["KMOD_RCTRL"]),
             HotkeyModifier::CtrlAlt => Some(&["KMOD_LCTRL", "KMOD_LALT"]),
             HotkeyModifier::RightShift => Some(&["KMOD_RSHIFT"]),
             HotkeyModifier::RightCtrlRightShift => Some(&["KMOD_RCTRL", "KMOD_RSHIFT"]),
             HotkeyModifier::Disabled => Some(&["KMOD_NONE"]),
             HotkeyModifier::Unmanaged => None,
+        }
+    }
+
+    /// Human-readable shortcut modifier name for UI hints, if active.
+    pub fn hint(self) -> Option<&'static str> {
+        match self {
+            HotkeyModifier::RightCtrl => Some("Right Ctrl"),
+            HotkeyModifier::CtrlAlt => Some("Ctrl + Alt"),
+            HotkeyModifier::RightShift => Some("Right Shift"),
+            HotkeyModifier::RightCtrlRightShift => Some("Right Ctrl + Right Shift"),
+            HotkeyModifier::Disabled | HotkeyModifier::Unmanaged => None,
         }
     }
 }
@@ -383,7 +414,7 @@ impl Default for AdvancedSettings {
             host_auth: HostAuth::Auto,
             connect_auth: ConnectAuth::Silent,
             certificates: CertPolicy::Ask,
-            hotkeys: HotkeyModifier::CtrlAlt,
+            hotkeys: HotkeyModifier::RightCtrl,
             grab_keyboard: true,
             auto_reconnect: true,
             log_level: LogLevel::Info,
@@ -464,6 +495,7 @@ mod tests {
         let s = ConnectionSettings::default();
         assert_eq!(s.display.mode, DisplayMode::Fullscreen);
         assert_eq!(s.display.scale, ScaleMode::Auto);
+        assert_eq!(s.display.connection_bar, ConnectionBar::AutoHide);
         assert_eq!(s.graphics.codec, GraphicsCodec::Avc444);
         assert_eq!(s.graphics.network, NetworkProfile::Auto);
         assert!(s.graphics.font_smoothing && s.graphics.wallpaper);
@@ -472,6 +504,11 @@ mod tests {
         assert!(s.audio.microphone);
         assert_eq!(s.advanced.certificates, CertPolicy::Ask);
         assert_eq!(s.advanced.connect_auth, ConnectAuth::Silent);
+        assert_eq!(s.advanced.hotkeys, HotkeyModifier::RightCtrl);
+        assert_eq!(HotkeyModifier::RightCtrl.sdl_mask(), Some(&["KMOD_RCTRL"][..]));
+        assert_eq!(HotkeyModifier::RightCtrl.hint(), Some("Right Ctrl"));
+        assert_eq!(HotkeyModifier::Disabled.hint(), None);
+        assert_eq!(HotkeyModifier::Unmanaged.hint(), None);
     }
 
     #[test]
@@ -488,8 +525,11 @@ mod tests {
             ..Config::default()
         };
         config.defaults.display.mode = DisplayMode::DynamicWindow;
+        config.defaults.display.connection_bar = ConnectionBar::Pinned;
         let mut custom = ConnectionSettings::default();
+        custom.display.connection_bar = ConnectionBar::Off;
         custom.graphics.codec = GraphicsCodec::Avc420;
+        custom.advanced.hotkeys = HotkeyModifier::CtrlAlt;
         custom.advanced.extra_args = "/kbd:layout:0x409".into();
         config.overrides.insert("abc".into(), custom.clone());
         config.save_to(&path).unwrap();
@@ -498,6 +538,7 @@ mod tests {
         assert_eq!(loaded, config);
         assert_eq!(loaded.settings_for("abc"), &custom);
         assert_eq!(loaded.settings_for("other").display.mode, DisplayMode::DynamicWindow);
+        assert_eq!(loaded.settings_for("other").display.connection_bar, ConnectionBar::Pinned);
         assert!(loaded.has_override("abc") && !loaded.has_override("other"));
         std::fs::remove_dir_all(&dir).unwrap();
     }
@@ -508,7 +549,9 @@ mod tests {
         let config: Config = serde_json::from_str(json).unwrap();
         assert_eq!(config.defaults.display.mode, DisplayMode::FixedWindow);
         assert_eq!(config.defaults.display.width, 1920);
+        assert_eq!(config.defaults.display.connection_bar, ConnectionBar::AutoHide);
         assert_eq!(config.defaults.graphics, GraphicsSettings::default());
+        assert_eq!(config.defaults.advanced.hotkeys, HotkeyModifier::RightCtrl);
     }
 
     #[test]

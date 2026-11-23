@@ -19,6 +19,56 @@ pub const CSS: &str = r#"
 .workspace-title { margin-left: 4px; }
 .signin-error { margin-top: 6px; }
 
+.session-bar-window { background: transparent; }
+.session-bar-handle {
+    background-color: alpha(#ffffff, 0.35);
+    border: 1px solid alpha(#000000, 0.35);
+    border-top: none;
+    border-radius: 0 0 6px 6px;
+    min-width: 140px;
+    min-height: 6px;
+}
+.session-bar-pill {
+    background-color: alpha(#1c1c20, 0.92);
+    color: #ffffff;
+    border: 1px solid alpha(#ffffff, 0.14);
+    border-top: none;
+    border-radius: 0 0 12px 12px;
+    padding: 4px 10px;
+    min-height: 36px;
+    box-shadow: 0 4px 14px alpha(#000000, 0.35);
+}
+.session-bar-pill button.flat,
+.session-bar-pill togglebutton.flat {
+    color: #ffffff;
+    min-width: 28px;
+    min-height: 28px;
+    padding: 0;
+}
+.session-bar-pill button.flat:hover,
+.session-bar-pill togglebutton.flat:hover,
+.session-bar-pill togglebutton.flat:checked {
+    background-color: alpha(#ffffff, 0.16);
+}
+.session-bar-title { font-weight: 600; font-size: 0.9em; }
+.session-bar-count { font-size: 0.8em; padding: 0 6px; }
+.session-bar-dot {
+    background-color: #f6b73c;
+    border-radius: 999px;
+    min-width: 8px;
+    min-height: 8px;
+}
+.session-bar-dot.connected { background-color: #3ddc84; }
+.session-bar-disconnect {
+    background-color: #e01b24;
+    color: #ffffff;
+    min-width: 26px;
+    min-height: 26px;
+    padding: 0;
+    border-radius: 999px;
+}
+.session-bar-disconnect:hover { background-color: #f66151; }
+
 "#;
 
 pub struct AppWidgets {
