@@ -61,7 +61,7 @@ pub fn about(parent: &impl IsA<gtk::Widget>) {
         .website("https://github.com/mannsion/CloudRDPApp")
         .issue_url("https://github.com/mannsion/CloudRDPApp/issues")
         // Shown on the first page, where everyone sees it.
-        .developer_name("mannsion · Unofficial, not affiliated with Microsoft")
+        .developer_name("Unofficial · not affiliated with Microsoft")
         .comments(
             "An unofficial Linux client for Azure Virtual Desktop and Windows 365. It signs in with Microsoft Entra ID, \
              lists your desktops and apps, and connects with FreeRDP.\n\n\
